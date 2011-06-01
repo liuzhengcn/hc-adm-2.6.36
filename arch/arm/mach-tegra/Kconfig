@@ -37,6 +37,11 @@ config MACH_WHISTLER
        help
          Support for NVIDIA Whistler development platform
 
+config MACH_ADAM
+       bool "Adam board"
+	   help
+	     Support for Notion Ink Adam platform.
+
 choice
         prompt "Low-level debug console UART"
         default TEGRA_DEBUG_UART_NONE

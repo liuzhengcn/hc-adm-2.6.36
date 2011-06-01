@@ -79,3 +79,9 @@ obj-${CONFIG_MACH_WHISTLER}             += board-whistler-sensors.o
 obj-${CONFIG_MACH_WHISTLER}             += board-whistler-kbc.o
 obj-${CONFIG_MACH_WHISTLER}             += board-whistler-baseband.o
 obj-${CONFIG_MACH_WHISTLER}             += board-whistler-memory.o
+
+obj-${CONFIG_MACH_ADAM}                 += board-adam.o
+obj-${CONFIG_MACH_ADAM}                 += board-adam-pinmux.o
+obj-${CONFIG_MACH_ADAM}                 += board-adam-panel.o
+obj-${CONFIG_MACH_ADAM}                 += board-adam-sdhci.o
+obj-${CONFIG_MACH_ADAM}                 += board-adam-led.o
