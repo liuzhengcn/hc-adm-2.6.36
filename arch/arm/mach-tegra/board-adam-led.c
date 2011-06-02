@@ -51,7 +51,7 @@ static struct platform_device gpio_led_platform_device = {
 int __init adam_led_init(void)
 {
 	int i;
-	pr_debug("%s", __func__);
+	printk("adam_led_init\n");
 	tegra_gpio_enable(TEGRA_GPIO_PI3);
 	gpio_request(TEGRA_GPIO_PI3, "led1");
 
