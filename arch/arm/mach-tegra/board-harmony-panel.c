@@ -210,12 +210,16 @@ static struct platform_device *harmony_gfx_devices[] __initdata = {
 	&harmony_nvmap_device,
 	&tegra_grhost_device,
 	&tegra_pwfm0_device,
-	&harmony_backlight_device,
+//	&harmony_backlight_device,
 };
 
 int __init harmony_panel_init(void)
 {
 	int err;
+
+	gpio_request(harmony_bl_enb, "backlight_enb");
+	gpio_direction_output(harmony_bl_enb, 1);
+	gpio_free(harmony_bl_enb);
 
 	gpio_request(harmony_en_vdd_pnl, "en_vdd_pnl");
 	gpio_direction_output(harmony_en_vdd_pnl, 1);

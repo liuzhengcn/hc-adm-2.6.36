@@ -144,7 +144,7 @@ static struct tegra_fb_data harmony_fb_data = {
 	.win		= 0,
 	.xres		= 1024,
 	.yres		= 600,
-	.bits_per_pixel	= 16,
+	.bits_per_pixel	= 18,
 };
 
 static struct tegra_dc_out harmony_disp1_out = {
@@ -152,6 +152,8 @@ static struct tegra_dc_out harmony_disp1_out = {
 
 	.align		= TEGRA_DC_ALIGN_MSB,
 	.order		= TEGRA_DC_ORDER_RED_BLUE,
+	.depth      = 18, 
+	.dither		= TEGRA_DC_ORDERED_DITHER,
 
 	.modes		= harmony_panel_modes,
 	.n_modes	= ARRAY_SIZE(harmony_panel_modes),

@@ -164,6 +164,8 @@ static struct resource ventana_disp1_resources[] = {
 	},
 	{
 		.name	= "fbmem",
+		.start	= 0x1c012000,
+		.end	= 0x1c012000 + 0x258000 - 1,
 		.flags	= IORESOURCE_MEM,
 	},
 };

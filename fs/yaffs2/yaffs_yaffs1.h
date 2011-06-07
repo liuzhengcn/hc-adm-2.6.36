@@ -13,11 +13,10 @@
  * Note: Only YAFFS headers are LGPL, YAFFS C code is covered by GPL.
  */
 
-#ifndef __YAFFS_MTDIF_H__
-#define __YAFFS_MTDIF_H__
+#ifndef __YAFFS_YAFFS1_H__
+#define __YAFFS_YAFFS1_H__
 
 #include "yaffs_guts.h"
+int yaffs1_scan(struct yaffs_dev *dev);
 
-int nandmtd_erase_block(struct yaffs_dev *dev, int block_no);
-int nandmtd_initialise(struct yaffs_dev *dev);
 #endif

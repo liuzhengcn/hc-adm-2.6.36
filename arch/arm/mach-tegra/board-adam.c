@@ -29,6 +29,9 @@
 #include <linux/delay.h>
 #include <linux/platform_data/tegra_usb.h>
 
+#include <linux/platform_data/tegra_usb.h>
+#include <linux/usb/android_composite.h>
+
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
 #include <asm/mach/time.h>
@@ -240,6 +243,75 @@ static struct tegra_audio_platform_data tegra_audio_pdata = {
 	.bit_size	= I2S_BIT_SIZE_16,
 };
 
+#define USB_MANUFACTURER_NAME		"NVIDIA"
+#define USB_PRODUCT_NAME		"Ventana"
+#define USB_PRODUCT_ID_MTP_ADB		0x7100
+#define USB_PRODUCT_ID_MTP		0x7102
+#define USB_PRODUCT_ID_RNDIS		0x7103
+#define USB_VENDOR_ID			0x0955
+
+static char *usb_functions_mtp_ums[] = { "mtp", "usb_mass_storage" };
+static char *usb_functions_mtp_adb_ums[] = { "mtp", "adb", "usb_mass_storage" };
+static char *usb_functions_all[] = {
+	"mtp",
+	"adb",
+	"usb_mass_storage"
+};
+
+static struct android_usb_product usb_products[] = {
+	{
+		.product_id     = USB_PRODUCT_ID_MTP,
+		.num_functions  = ARRAY_SIZE(usb_functions_mtp_ums),
+		.functions      = usb_functions_mtp_ums,
+	},
+	{
+		.product_id     = USB_PRODUCT_ID_MTP_ADB,
+		.num_functions  = ARRAY_SIZE(usb_functions_mtp_adb_ums),
+		.functions      = usb_functions_mtp_adb_ums,
+	}, 
+};
+
+static struct android_usb_platform_data andusb_plat = {
+	.vendor_id = 		USB_VENDOR_ID, 
+	.product_id             = USB_PRODUCT_ID_MTP_ADB,
+	.manufacturer_name      = USB_MANUFACTURER_NAME,
+	.product_name           = USB_PRODUCT_NAME,
+	.serial_number          = NULL,
+	.num_products = ARRAY_SIZE(usb_products),
+	.products = usb_products,
+	.num_functions = ARRAY_SIZE(usb_functions_all),
+	.functions = usb_functions_all,
+};
+
+static struct platform_device androidusb_device = {
+	.name = "android_usb", 
+	.id = -1, 
+	.dev = {
+		.platform_data  = &andusb_plat,
+	}, 
+};
+
+
+static struct usb_phy_plat_data tegra_usb_phy_pdata[] = {
+	[0] = {
+		.instance = 0,
+		.vbus_gpio = -1, 
+	},
+	[1] = {
+		.instance = 1, 
+		.vbus_gpio = -1,
+	},
+	[2] = {
+		.instance = 2, 
+		.vbus_gpio = -1, 
+	},
+};
+
+static int adam_usb_init()
+{
+	tegra_usb_phy_init(tegra_usb_phy_data, ARRAY_SIZE(tegra_usb_phy_data));
+}
+
 static void harmony_i2c_init(void)
 {
 	tegra_i2c_device1.dev.platform_data = &harmony_i2c1_platform_data;
@@ -258,6 +330,7 @@ static void harmony_i2c_init(void)
 
 static struct platform_device *harmony_devices[] __initdata = {
 	&debug_uart,
+	&androidusb_device, 
 	&pmu_device,
 	&tegra_nand_device,
 	&tegra_udc_device,
