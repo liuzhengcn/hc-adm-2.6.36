@@ -31,6 +31,7 @@
 
 #include <linux/platform_data/tegra_usb.h>
 #include <linux/usb/android_composite.h>
+#include <linux/memblock.h>
 
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
@@ -50,6 +51,7 @@
 #include "board.h"
 #include "board-adam.h"
 #include "devices.h"
+#include "gpio-names.h"
 
 /* NVidia bootloader tags */
 #define ATAG_NVIDIA		0x41000801
@@ -75,20 +77,49 @@ static int __init parse_tag_nvidia(const struct tag *tag)
 }
 __tagtable(ATAG_NVIDIA, parse_tag_nvidia);
 
-static struct tegra_utmip_config utmi_phy_config = {
-	.hssync_start_delay = 0,
-	.idle_wait_delay = 17,
-	.elastic_limit = 16,
-	.term_range_adj = 6,
-	.xcvr_setup = 9,
-	.xcvr_lsfslew = 2,
-	.xcvr_lsrslew = 2,
+static struct tegra_utmip_config utmi_phy_config[] = {
+	[0] = {
+			.hssync_start_delay = 9,
+			.idle_wait_delay = 17,
+			.elastic_limit = 16,
+			.term_range_adj = 6,
+			.xcvr_setup = 15,
+			.xcvr_lsfslew = 2,
+			.xcvr_lsrslew = 2,
+	},
+	[1] = {
+			.hssync_start_delay = 9,
+			.idle_wait_delay = 17,
+			.elastic_limit = 16,
+			.term_range_adj = 6,
+			.xcvr_setup = 8,
+			.xcvr_lsfslew = 2,
+			.xcvr_lsrslew = 2,
+	},
 };
 
-static struct tegra_ehci_platform_data tegra_ehci_pdata = {
-	.phy_config = &utmi_phy_config,
-	.operating_mode = TEGRA_USB_HOST,
-	.power_down_on_bus_suspend = 1,
+static struct tegra_ulpi_config ulpi_phy_config = {
+	.reset_gpio = TEGRA_GPIO_PG2,
+	.clk = "clk_dev2",
+	.inf_type = TEGRA_USB_LINK_ULPI,
+};
+
+static struct tegra_ehci_platform_data tegra_ehci_pdata[] = {
+	[0] = {
+			.phy_config = &utmi_phy_config[0],
+			.operating_mode = TEGRA_USB_HOST,
+			.power_down_on_bus_suspend = 1,
+	},
+	[1] = {
+			.phy_config = &ulpi_phy_config,
+			.operating_mode = TEGRA_USB_HOST,
+			.power_down_on_bus_suspend = 1,
+	},
+	[2] = {
+			.phy_config = &utmi_phy_config[1],
+			.operating_mode = TEGRA_USB_HOST,
+			.power_down_on_bus_suspend = 1,
+	}
 };
 
 static struct tegra_nand_chip_parms nand_chip_parms[] = {
@@ -307,9 +338,72 @@ static struct usb_phy_plat_data tegra_usb_phy_pdata[] = {
 	},
 };
 
+static struct platform_device *tegra_usb_otg_host_register(void)
+{
+	struct platform_device *pdev;
+	void *platform_data;
+	int val;
+
+	pdev = platform_device_alloc(tegra_ehci1_device.name, tegra_ehci1_device.id);
+	if (!pdev)
+		return NULL;
+
+	val = platform_device_add_resources(pdev, tegra_ehci1_device.resource,
+		tegra_ehci1_device.num_resources);
+	if (val)
+		goto error;
+
+	pdev->dev.dma_mask =  tegra_ehci1_device.dev.dma_mask;
+	pdev->dev.coherent_dma_mask = tegra_ehci1_device.dev.coherent_dma_mask;
+
+	platform_data = kmalloc(sizeof(struct tegra_ehci_platform_data), GFP_KERNEL);
+	if (!platform_data)
+		goto error;
+
+	memcpy(platform_data, &tegra_ehci_pdata[0],
+				sizeof(struct tegra_ehci_platform_data));
+	pdev->dev.platform_data = platform_data;
+
+	val = platform_device_add(pdev);
+	if (val)
+		goto error_add;
+
+	return pdev;
+
+error_add:
+	kfree(platform_data);
+error:
+	pr_err("%s: failed to add the host contoller device\n", __func__);
+	platform_device_put(pdev);
+	return NULL;
+}
+
+static void tegra_usb_otg_host_unregister(struct platform_device *pdev)
+{
+	kfree(pdev->dev.platform_data);
+	pdev->dev.platform_data = NULL;
+	platform_device_unregister(pdev);
+}
+
+static struct tegra_otg_platform_data tegra_otg_pdata = {
+	.host_register = &tegra_usb_otg_host_register,
+	.host_unregister = &tegra_usb_otg_host_unregister,
+};
+
 static int adam_usb_init()
 {
-	tegra_usb_phy_init(tegra_usb_phy_data, ARRAY_SIZE(tegra_usb_phy_data));
+	printk("adam_usb_init\n");
+	tegra_usb_phy_init(tegra_usb_phy_pdata, ARRAY_SIZE(tegra_usb_phy_pdata));
+	printk("phase 0\n");
+
+	tegra_otg_device.dev.platform_data = &tegra_otg_pdata;
+	platform_device_register(&tegra_otg_device);
+
+	printk("phase 1\n");
+
+	tegra_ehci3_device.dev.platform_data=&tegra_ehci_pdata[2];
+	platform_device_register(&tegra_ehci3_device);
+
 }
 
 static void harmony_i2c_init(void)
@@ -335,7 +429,7 @@ static struct platform_device *harmony_devices[] __initdata = {
 	&tegra_nand_device,
 	&tegra_udc_device,
 	&pda_power_device,
-	&tegra_ehci3_device,
+	//&tegra_ehci3_device,
 	&tegra_spi_device1,
 	&tegra_spi_device2,
 	&tegra_spi_device3,
@@ -472,6 +566,8 @@ static void __init tegra_harmony_init(void)
 
 	platform_add_devices(harmony_devices, ARRAY_SIZE(harmony_devices));
 
+	adam_usb_init();
+
 	adam_led_init();
 
 	harmony_panel_init();
@@ -479,13 +575,29 @@ static void __init tegra_harmony_init(void)
 	harmony_i2c_init();
 }
 
+void __init tegra_harmony_reserve(void)
+{
+	if (memblock_reserve(0x0, 4096) < 0)
+		pr_warn("Cannot reserve first 4K of memory for safety\n");
+
+	tegra_reserve(SZ_256M, SZ_8M, SZ_16M);
+}
+
+int __init tegra_adam_protected_aperture_init(void)
+{
+	tegra_protected_aperture_init(tegra_grhost_aperture);
+	return 0;
+}
+late_initcall(tegra_adam_protected_aperture_init);
+
 MACHINE_START(HARMONY, "ventana")
 	.boot_params  = 0x00000100,
 	.phys_io        = IO_APB_PHYS,
 	.io_pg_offst    = ((IO_APB_VIRT) >> 18) & 0xfffc,
-	.fixup		= tegra_harmony_fixup,
+	 //.fixup		= tegra_harmony_fixup,
 	.init_irq       = tegra_init_irq,
 	.init_machine   = tegra_harmony_init,
 	.map_io         = tegra_map_common_io,
+	.reserve        = tegra_harmony_reserve,
 	.timer          = &tegra_timer,
 MACHINE_END
